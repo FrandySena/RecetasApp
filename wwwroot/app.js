@@ -1,4 +1,4 @@
-﻿const STORAGE_KEY = 'recetas_app_v1';
+﻿const STORAGE_KEY = 'recetas_app_v2';
 
 document.addEventListener('DOMContentLoaded', () => {
     loadInitialData();
