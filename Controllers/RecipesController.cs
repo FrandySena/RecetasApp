@@ -15,6 +15,20 @@ public class RecipesController : ControllerBase
         _service = service;
     }
 
+    [HttpGet]
+    public IActionResult GetAll()
+    {
+        return Ok(_service.GetAll());
+    }
+
+    [HttpGet("{id}")]
+    public IActionResult GetById(string id)
+    {
+        var recipe = _service.GetById(id);
+        if (recipe == null) return NotFound();
+        return Ok(recipe);
+    }
+
     [HttpPost]
     public IActionResult Create([FromBody] Recipe recipe)
     {
