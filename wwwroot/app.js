@@ -1,8 +1,10 @@
 ﻿const STORAGE_KEY = 'recetas_app_v2';
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadInitialData();
+    initData();
     renderRecipes();
+
+    document.getElementById('recipeForm').addEventListener('submit', handleFormSubmit);
 });
 
 function getStoredRecipes() {
@@ -14,24 +16,21 @@ function saveStoredRecipes(recipes) {
     renderRecipes();
 }
 
-function loadInitialData() {
+function initData() {
     if (!localStorage.getItem(STORAGE_KEY)) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify([{
-            id: "1",
-            title: "Sancocho",
-            category: "Almuerzo",
-            prepTimeMinutes: 120,
-            ingredients: "Carne, Yucca",
-            instructions: "Hervir"
-        }]));
+        const defaults = [
+            { id: "1", title: "Sancocho Dominicano", category: "Almuerzo", prepTimeMinutes: 120, ingredients: "Carne de res, Pollo, Yuca, Plátano", instructions: "Hervir las carnes y víveres a fuego lento." }
+        ];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
     }
 }
 
-document.getElementById('recipeForm').addEventListener('submit', async (e) => {
+async function handleFormSubmit(e) {
     e.preventDefault();
-    const id = document.getElementById('recipeId').value;
+
+    const idInput = document.getElementById('recipeId').value;
     const recipeData = {
-        id: id || crypto.randomUUID(),
+        id: idInput ? idInput : crypto.randomUUID(),
         title: document.getElementById('title').value,
         category: document.getElementById('category').value,
         prepTimeMinutes: parseInt(document.getElementById('prepTimeMinutes').value),
@@ -39,35 +38,40 @@ document.getElementById('recipeForm').addEventListener('submit', async (e) => {
         instructions: document.getElementById('instructions').value
     };
 
+    const isEditing = Boolean(idInput);
+    const method = isEditing ? 'PUT' : 'POST';
+
     try {
-        // Nota: Asegúrate de tener tu backend corriendo para que esta petición fetch funcione,
-        // de lo contrario, puedes omitir la llamada a la API si solo usas LocalStorage.
-        const response = await fetch('/api/recipes', {
-            method: id ? 'PUT' : 'POST',
+        await fetch('/api/recipes', {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(recipeData)
         });
-
-        if (response.ok) {
-            let recipes = getStoredRecipes();
-            if (id) {
-                recipes = recipes.map(r => r.id === id ? recipeData : r);
-            } else {
-                recipes.push(recipeData);
-            }
-            saveStoredRecipes(recipes);
-            resetForm();
-        }
-    } catch (error) {
-        console.error("Error conectando con la API:", error);
+    } catch (err) {
+        console.error(err);
     }
-});
+
+    let recipes = getStoredRecipes();
+    if (isEditing) {
+        recipes = recipes.map(r => String(r.id) === String(recipeData.id) ? recipeData : r);
+    } else {
+        recipes.push(recipeData);
+    }
+
+    saveStoredRecipes(recipes);
+    resetForm();
+}
 
 function renderRecipes(filterText = '') {
     const container = document.getElementById('recipesList');
-    const recipes = getStoredRecipes().filter(r =>
-        r.title.toLowerCase().includes(filterText.toLowerCase())
-    );
+    if (!container) return;
+
+    const recipes = getStoredRecipes().filter(r => r.title.toLowerCase().includes(filterText.toLowerCase()));
+
+    if (recipes.length === 0) {
+        container.innerHTML = '<div class="col-12"><p class="text-muted text-center">No hay recetas guardadas.</p></div>';
+        return;
+    }
 
     container.innerHTML = recipes.map(r => `
         <div class="col-md-6 mb-3">
@@ -91,7 +95,8 @@ function filterRecipes() {
 }
 
 function editRecipe(id) {
-    const recipe = getStoredRecipes().find(r => r.id === id);
+    const recipes = getStoredRecipes();
+    const recipe = recipes.find(r => String(r.id) === String(id));
     if (!recipe) return;
 
     document.getElementById('recipeId').value = recipe.id;
@@ -103,17 +108,21 @@ function editRecipe(id) {
 
     document.getElementById('formTitle').innerText = 'Editar Receta';
     document.getElementById('btnCancel').classList.remove('d-none');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function deleteRecipe(id) {
-    if (!confirm('¿Eliminar receta?')) return;
+    if (!confirm('¿Seguro que deseas eliminar esta receta?')) return;
 
     try {
         await fetch(`/api/recipes/${id}`, { method: 'DELETE' });
-        saveStoredRecipes(getStoredRecipes().filter(r => r.id !== id));
-    } catch (error) {
-        console.error("Error eliminando en la API:", error);
+    } catch (e) {
+        console.error(e);
     }
+
+    const recipes = getStoredRecipes().filter(r => String(r.id) !== String(id));
+    saveStoredRecipes(recipes);
 }
 
 function resetForm() {
