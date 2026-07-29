@@ -38,4 +38,20 @@ public class RecipesController : ControllerBase
         _service.Add(recipe);
         return Ok(recipe);
     }
+
+    [HttpPut]
+    public IActionResult Update([FromBody] Recipe recipe)
+    {
+        var updated = _service.Update(recipe);
+        if (!updated) return NotFound();
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public IActionResult Delete(string id)
+    {
+        var deleted = _service.Delete(id);
+        if (!deleted) return NotFound();
+        return NoContent();
+    }
 }
