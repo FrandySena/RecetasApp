@@ -1,6 +1,9 @@
+using RecetasApp.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddSingleton<RecipeService>();
 
 var app = builder.Build();
 
